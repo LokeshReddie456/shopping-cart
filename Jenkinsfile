@@ -1,41 +1,60 @@
 pipeline {
-  agent any
+    agent any
 
-  environment {
-    IMAGE_NAME = "lokeshreddie456/shopping-cart"
-  }
-
-  stages {
-    stage('Checkout') {
-      steps {
-        git branch: 'main', url: 'https://github.com/LokeshReddie456/shopping-cart.git'
-      }
+    environment {
+        IMAGE_NAME = "lokeshreddie456/shopping-cart"  // Docker Hub repo
     }
 
-    stage('Build Docker Image') {
-      steps {
-        sh 'docker build -t $IMAGE_NAME:latest .'
-      }
-    }
+    stages {
 
-    stage('Login to DockerHub') {
-      steps {
-        withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-          sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+        stage('Checkout Code') {
+            steps {
+                git branch: 'main', url: 'https://github.com/LokeshReddie456/shopping-cart.git'
+            }
         }
-      }
+
+        stage('Build & Test Java App') {
+            steps {
+                echo 'Building and testing the Java application...'
+                sh './mvnw clean package -DskipTests=false'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                echo 'Building Docker image...'
+                sh 'docker build -t $IMAGE_NAME:latest .'
+            }
+        }
+
+        stage('Login to DockerHub') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub',
+                                                  usernameVariable: 'lokeshreddy56',
+                                                  passwordVariable: '@Samsunggalaxy456')]) {
+                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                }
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                echo 'Pushing Docker image to Docker Hub...'
+                sh 'docker push $IMAGE_NAME:latest'
+            }
+        }
     }
 
-    stage('Push Image') {
-      steps {
-        sh 'docker push $IMAGE_NAME:latest'
-      }
+    post {
+        always {
+            echo 'Logging out from Docker...'
+            sh 'docker logout || true'
+        }
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed!'
+        }
     }
-  }
-
-  post {
-    always {
-      sh 'docker logout || true'
-    }
-  }
 }
